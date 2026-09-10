@@ -1,6 +1,9 @@
 name: ModMan Windows test build
 
 on:
+  push:
+    branches:
+      - test/modman-iw5-20260910
   workflow_dispatch:
 
 jobs:
