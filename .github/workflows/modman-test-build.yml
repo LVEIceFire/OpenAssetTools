@@ -29,7 +29,7 @@ jobs:
       - name: Checkout tested OAT base
         uses: actions/checkout@v7.0.1
         with:
-          ref: d70ef4716d37e1d29b8148044282b458956f57e3
+          ref: main
           path: source
           submodules: recursive
           persist-credentials: false
