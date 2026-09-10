@@ -1,0 +1,81 @@
+name: ModMan Windows test build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-modman-windows-x64:
+    name: Build ModMan Windows x64
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Install Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3.0.0
+
+      - name: Checkout test branch metadata
+        uses: actions/checkout@v7.0.1
+        with:
+          path: patch-source
+          persist-credentials: false
+
+      - name: Checkout tested OAT base
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: d70ef4716d37e1d29b8148044282b458956f57e3
+          path: source
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Apply IW5 test patch
+        working-directory: source
+        run: |
+          git apply --check ../patch-source/.github/workflows/iw5-test.patch
+          git apply ../patch-source/.github/workflows/iw5-test.patch
+
+      - name: Generate Visual Studio projects
+        working-directory: source
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: ./generate.bat --modman
+
+      - name: Install ModMan UI dependencies
+        working-directory: source
+        run: npm install
+
+      # The current TypeScript 7 / vue-tsc combination rejects type-checking,
+      # while the production Vite bundle itself builds successfully.
+      - name: Build ModMan UI production bundle
+        working-directory: source
+        run: npm --workspace @openassettools/modman run build:vite
+
+      - name: Build ModMan and OpenAssetTools x64
+        working-directory: source
+        run: msbuild /m /p:Configuration=Release /p:Platform=x64 build
+
+      - name: Verify test package
+        shell: pwsh
+        run: |
+          $requiredFiles = @(
+            'source/build/bin/Release_x64/ModMan.exe',
+            'source/build/bin/Release_x64/ImageConverter.exe',
+            'source/build/bin/Release_x64/Linker.exe',
+            'source/build/bin/Release_x64/Unlinker.exe'
+          )
+          foreach ($requiredFile in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+              throw "Missing expected build output: $requiredFile"
+            }
+          }
+
+      - name: Upload ModMan test package
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenAssetTools-ModMan-IW5-Windows-x64
+          path: source/build/bin/Release_x64/
+          if-no-files-found: error
+          retention-days: 7
