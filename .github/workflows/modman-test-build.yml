@@ -34,11 +34,18 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Apply IW5 test patch
+      - name: Apply exact IW5 source overlay
+        shell: pwsh
         working-directory: source
         run: |
-          git apply --check ../patch-source/.github/workflows/iw5-test.patch
-          git apply ../patch-source/.github/workflows/iw5-test.patch
+          $overlayArchive = Join-Path $env:RUNNER_TEMP 'iw5-overlay.zip'
+          $encodedOverlay = Get-Content -Raw -LiteralPath '../patch-source/.github/workflows/iw5-overlay.b64'
+          [System.IO.File]::WriteAllBytes($overlayArchive, [System.Convert]::FromBase64String($encodedOverlay))
+          $overlayHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $overlayArchive).Hash
+          if ($overlayHash -ne 'B4137DB2E4DFCD476CD07761BCA65AF27B700177B282ED60B8016336E32A25EB') {
+            throw "Unexpected overlay SHA-256: $overlayHash"
+          }
+          Expand-Archive -LiteralPath $overlayArchive -DestinationPath . -Force
 
       - name: Generate Visual Studio projects
         working-directory: source
