@@ -42,10 +42,21 @@ jobs:
           $encodedOverlay = Get-Content -Raw -LiteralPath '../patch-source/.github/workflows/iw5-overlay.b64'
           [System.IO.File]::WriteAllBytes($overlayArchive, [System.Convert]::FromBase64String($encodedOverlay))
           $overlayHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $overlayArchive).Hash
-          if ($overlayHash -ne 'B4137DB2E4DFCD476CD07761BCA65AF27B700177B282ED60B8016336E32A25EB') {
+          if ($overlayHash -ne '1A3101D09974587FA870DF25B791DB1E190637D675BC03385CDF4534C8330FE4') {
             throw "Unexpected overlay SHA-256: $overlayHash"
           }
           Expand-Archive -LiteralPath $overlayArchive -DestinationPath . -Force
+          $sourceRoot = [System.IO.Path]::GetFullPath((Get-Location).Path) + [System.IO.Path]::DirectorySeparatorChar
+          $deleteManifest = Join-Path $sourceRoot '.overlay-delete.txt'
+          foreach ($relativePath in Get-Content -LiteralPath $deleteManifest) {
+            $deleteTarget = [System.IO.Path]::GetFullPath((Join-Path $sourceRoot $relativePath))
+            if (-not $deleteTarget.StartsWith($sourceRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+              throw "Unsafe overlay deletion target: $deleteTarget"
+            }
+            if (Test-Path -LiteralPath $deleteTarget -PathType Leaf) {
+              Remove-Item -LiteralPath $deleteTarget -Force
+            }
+          }
 
       - name: Generate Visual Studio projects
         working-directory: source
