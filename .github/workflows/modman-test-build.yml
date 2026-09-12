@@ -42,7 +42,7 @@ jobs:
           $encodedOverlay = Get-Content -Raw -LiteralPath '../patch-source/.github/workflows/iw5-overlay.b64'
           [System.IO.File]::WriteAllBytes($overlayArchive, [System.Convert]::FromBase64String($encodedOverlay))
           $overlayHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $overlayArchive).Hash
-          if ($overlayHash -ne 'B5B0452E18D540973C2D1AF4A2E82EA1896FCC57EFD943620725B8B9F35B49C5') {
+          if ($overlayHash -ne '78E5BDF333FB1854CCE5F684E47606CEB4CDDA2B1A329A9A1A5F70A8FE07162C') {
             throw "Unexpected overlay SHA-256: $overlayHash"
           }
           Expand-Archive -LiteralPath $overlayArchive -DestinationPath . -Force
