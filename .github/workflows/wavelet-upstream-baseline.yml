@@ -1,0 +1,44 @@
+name: IW5 wavelet upstream baseline
+
+on:
+  push:
+    branches:
+      - test/upstream-wavelet-baseline-20260912
+  workflow_dispatch:
+
+jobs:
+  build-windows-x64:
+    name: Build current upstream ImageConverter x64
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Check out exact upstream revision
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: Laupetin/OpenAssetTools
+          ref: dfcbc6e206551a4345d969c6abc596f4704627bd
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3.0.0
+
+      - name: Generate Visual Studio projects
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: ./generate.bat
+
+      - name: Build ImageConverter and tests
+        run: msbuild /m /p:Configuration=Release /p:Platform=x64 build
+
+      - name: Run ObjCommon image tests
+        working-directory: build/lib/Release_x64/tests
+        run: ./ObjCommonTests "[image]"
+
+      - name: Upload exact upstream ImageConverter
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenAssetTools-upstream-ImageConverter-x64
+          path: build/bin/Release_x64/ImageConverter.exe
+          if-no-files-found: error
+          retention-days: 3
