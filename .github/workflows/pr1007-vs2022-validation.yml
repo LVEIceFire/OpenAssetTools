@@ -37,7 +37,7 @@ jobs:
 
       - name: Build with warnings as errors
         shell: pwsh
-        run: msbuild /m /p:TrackFileAccess=false /p:UseMultiToolTask=true /p:Configuration=Release /p:Platform=${{ matrix.msbuild_platform }} build
+        run: msbuild /m /p:TrackFileAccess=false /p:UseMultiToolTask=true /p:Configuration=Release /p:Platform=${{ matrix.msbuild_platform }} build/OpenAssetTools.sln
 
       - name: Run all tests
         shell: pwsh
