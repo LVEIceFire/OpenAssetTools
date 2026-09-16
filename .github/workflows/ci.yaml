@@ -188,23 +188,23 @@ jobs:
         run: |
           $combinedExitCode = 0
           ./CommonTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ObjCommonTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ObjCompilingTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ObjLoadingTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ObjWritingTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ParserTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./SystemTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./UnlinkingTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ZoneCodeGeneratorLibTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           ./ZoneCommonTests
-          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
           exit $combinedExitCode
