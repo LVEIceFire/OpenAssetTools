@@ -1,0 +1,59 @@
+name: PR 1007 VS2022 upstream control
+
+on:
+  push:
+    branches:
+      - validation/pr1007-vs2022-upstream-control-20260916
+
+jobs:
+  build-test-x64:
+    name: Visual Studio 2022 x64 upstream control
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3.0.0
+
+      - name: Generate Visual Studio 2022 projects
+        shell: pwsh
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: |
+          ./generate.bat
+          ./build/premake5.exe vs2022
+
+      - name: Build with warnings as errors
+        shell: pwsh
+        run: msbuild /m /p:TrackFileAccess=false /p:UseMultiToolTask=true /p:Configuration=Release /p:Platform=x64 build/OpenAssetTools.sln
+
+      - name: Run all tests
+        shell: pwsh
+        working-directory: build/lib/Release_x64/tests
+        run: |
+          $combinedExitCode = 0
+          ./CommonTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ObjCommonTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ObjCompilingTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ObjLoadingTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ObjWritingTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ParserTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./SystemTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./UnlinkingTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ZoneCodeGeneratorLibTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          ./ZoneCommonTests
+          $combinedExitCode = [System.Math]::max($combinedExitCode, $LASTEXITCODE)
+          exit $combinedExitCode
