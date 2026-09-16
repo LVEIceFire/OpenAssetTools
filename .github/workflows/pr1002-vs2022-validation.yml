@@ -3,7 +3,7 @@ name: PR 1002 Visual Studio 2022 validation
 on:
   push:
     branches:
-      - validation/pr1002-vs2022-20260916
+      - validation/pr1002-upstream-control-vs2022-20260916
 
 jobs:
   build-test:
