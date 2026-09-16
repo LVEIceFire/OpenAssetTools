@@ -9,7 +9,7 @@ jobs:
   diagnose:
     name: Visual Studio 2022 Release x64 ASan
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 50
 
     steps:
       - name: Checkout repository
@@ -32,13 +32,23 @@ jobs:
         shell: pwsh
         env:
           CL: /Z7
+          LINK: /DEBUG
         run: |
           msbuild /m:2 /p:TrackFileAccess=false /p:UseMultiToolTask=false /p:Configuration=Release /p:Platform=x64 /p:EnableASAN=true /p:GenerateDebugInformation=true build/OpenAssetTools.sln
 
-      - name: Show test runner options
+      - name: Stage AddressSanitizer runtime
         shell: pwsh
         working-directory: build/lib/Release_x64/tests
-        run: ./ObjWritingTests.exe --help
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $runtime = Get-ChildItem "$installationPath\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll |
+            Select-Object -First 1
+          if (-not $runtime) {
+            throw "Could not find the x64 AddressSanitizer runtime."
+          }
+          Copy-Item $runtime.FullName .
+          Write-Host "Staged $($runtime.FullName)"
 
       - name: Run focused T5 techset test
         id: focused-test
@@ -46,9 +56,12 @@ jobs:
         working-directory: build/lib/Release_x64/tests
         env:
           ASAN_OPTIONS: abort_on_error=1:halt_on_error=1:print_legend=1:verbosity=1
+          ASAN_SAVE_DUMPS: objwriting-asan.dmp
         run: |
-          ./ObjWritingTests.exe "[t5][techset][dumper]" -s
-          exit $LASTEXITCODE
+          & ./ObjWritingTests.exe "[t5][techset][dumper]" -s 2>&1 | Tee-Object -FilePath focused-test.log
+          $testExitCode = $LASTEXITCODE
+          Write-Host "Focused test exit code: $testExitCode"
+          exit $testExitCode
 
       - name: Upload diagnostic files
         if: always()
