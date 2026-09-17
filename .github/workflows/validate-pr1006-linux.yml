@@ -1,0 +1,89 @@
+name: Validate PR 1006 on Linux
+
+on:
+  push:
+    branches:
+      - validation/pr1006-linux-20260917
+
+jobs:
+  build-test:
+    name: Ubuntu 24.04 ${{ matrix.toolset }} ${{ matrix.build_arch }}
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        build_arch: [x86, x64]
+        toolset: [gcc, clang]
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Enable i386 architecture
+        if: ${{ matrix.build_arch == 'x86' }}
+        run: dpkg --add-architecture i386
+
+      - name: Install base packages
+        run: |
+          apt-get update
+          apt-get install -y wget tar git make curl
+
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+
+      - name: Configure GCC
+        uses: ./.github/actions/configure-gcc
+        with:
+          gcc_version: 14
+          enable_x86: ${{ case(matrix.build_arch == 'x86', 'true', 'false') }}
+
+      - name: Configure Clang
+        if: ${{ matrix.toolset == 'clang' }}
+        uses: ./.github/actions/configure-clang
+        with:
+          clang_version: 20
+          enable_x86: ${{ case(matrix.build_arch == 'x86', 'true', 'false') }}
+
+      - name: Generate projects
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: ./generate.sh --cc=${{ matrix.toolset }}
+
+      - name: Build Release
+        run: |
+          if [[ "${{ matrix.toolset }}" == "gcc" ]]; then
+            export CC=gcc
+            export CXX=g++
+          else
+            export CC=clang
+            export CXX=clang++
+          fi
+          scripts/build.sh release ${{ matrix.build_arch }}
+
+      - name: Run all tests and preserve every failure
+        working-directory: build/lib/Release_${{ matrix.build_arch }}/tests
+        run: |
+          combined_exit_code=0
+          tests=(
+            CommonTests
+            ObjCommonTests
+            ObjCompilingTests
+            ObjLoadingTests
+            ObjWritingTests
+            ParserTests
+            SystemTests
+            UnlinkingTests
+            ZoneCodeGeneratorLibTests
+            ZoneCommonTests
+          )
+          for test_name in "${tests[@]}"; do
+            echo "Running ${test_name}"
+            if ! "./${test_name}"; then
+              combined_exit_code=1
+            fi
+          done
+          exit "${combined_exit_code}"
