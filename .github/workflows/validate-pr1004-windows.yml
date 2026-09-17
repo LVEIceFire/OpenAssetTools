@@ -1,0 +1,63 @@
+name: Validate PR 1004 on Windows
+
+on:
+  push:
+    branches:
+      - validation/pr1004-full-windows-20260917
+
+jobs:
+  build-test:
+    name: Visual Studio 2022 ${{ matrix.build_arch }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build_arch: x86
+            msbuild_platform: Win32
+          - build_arch: x64
+            msbuild_platform: x64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3.0.0
+      - name: Generate Visual Studio 2022 projects
+        shell: pwsh
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: |
+          ./generate.bat
+          ./build/premake5.exe vs2022
+      - name: Build with warnings as errors
+        shell: pwsh
+        run: msbuild /m /p:TrackFileAccess=false /p:UseMultiToolTask=true /p:Configuration=Release /p:Platform=${{ matrix.msbuild_platform }} build/OpenAssetTools.sln
+      - name: Run all tests
+        shell: pwsh
+        working-directory: build/lib/Release_${{ matrix.build_arch }}/tests
+        run: |
+          $combinedExitCode = 0
+          ./CommonTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ObjCommonTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ObjCompilingTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ObjLoadingTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ObjWritingTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ParserTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./SystemTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./UnlinkingTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ZoneCodeGeneratorLibTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          ./ZoneCommonTests
+          if ($LASTEXITCODE -ne 0) { $combinedExitCode = 1 }
+          exit $combinedExitCode
