@@ -34,7 +34,7 @@ jobs:
           CL: /Z7
           LINK: /DEBUG
         run: |
-          msbuild /m:2 /p:TrackFileAccess=false /p:UseMultiToolTask=false /p:Configuration=Release /p:Platform=Win32 /p:EnableASAN=true /p:GenerateDebugInformation=true build/test/SystemTests/SystemTests.vcxproj
+          msbuild /m:2 /t:SystemTests /p:TrackFileAccess=false /p:UseMultiToolTask=false /p:Configuration=Release /p:Platform=Win32 /p:EnableASAN=true /p:GenerateDebugInformation=true build/OpenAssetTools.sln
 
       - name: Stage AddressSanitizer runtime
         shell: pwsh
