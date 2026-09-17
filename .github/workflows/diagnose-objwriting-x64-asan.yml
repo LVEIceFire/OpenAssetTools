@@ -1,0 +1,76 @@
+name: Diagnose ObjWritingTests x64 with AddressSanitizer
+
+on:
+  push:
+    branches:
+      - validation/pr1004-x64-asan-20260917
+
+jobs:
+  diagnose:
+    name: Visual Studio 2022 Release x64 ASan
+    runs-on: windows-2022
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3.0.0
+
+      - name: Generate Visual Studio 2022 projects
+        shell: pwsh
+        env:
+          PREMAKE_NO_PROMPT: 1
+        run: |
+          ./generate.bat
+          ./build/premake5.exe vs2022
+
+      - name: Build ObjWritingTests with AddressSanitizer
+        shell: pwsh
+        env:
+          CL: /Z7
+          LINK: /DEBUG
+        run: |
+          msbuild /m:2 /p:TrackFileAccess=false /p:UseMultiToolTask=false /p:Configuration=Release /p:Platform=x64 /p:EnableASAN=true /p:GenerateDebugInformation=true build/OpenAssetTools.sln
+
+      - name: Stage AddressSanitizer runtime
+        shell: pwsh
+        working-directory: build/lib/Release_x64/tests
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $runtime = Get-ChildItem "$installationPath\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll |
+            Select-Object -First 1
+          if (-not $runtime) {
+            throw "Could not find the x64 AddressSanitizer runtime."
+          }
+          Copy-Item $runtime.FullName .
+          Write-Host "Staged $($runtime.FullName)"
+
+      - name: Run focused T5 techset test
+        id: focused-test
+        shell: pwsh
+        working-directory: build/lib/Release_x64/tests
+        env:
+          ASAN_OPTIONS: abort_on_error=1:halt_on_error=1:print_legend=1:verbosity=1
+          ASAN_SAVE_DUMPS: objwriting-asan.dmp
+        run: |
+          & ./ObjWritingTests.exe "[t5][techset][dumper]" -s 2>&1 | Tee-Object -FilePath focused-test.log
+          $testExitCode = $LASTEXITCODE
+          Write-Host "Focused test exit code: $testExitCode"
+          exit $testExitCode
+
+      - name: Upload diagnostic files
+        if: always()
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: objwriting-x64-asan-diagnostics
+          if-no-files-found: ignore
+          path: |
+            build/lib/Release_x64/tests/*.log
+            build/lib/Release_x64/tests/*.dmp
+            build/lib/Release_x64/tests/*.txt
+            build/**/*.pdb
